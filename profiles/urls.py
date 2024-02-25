@@ -1,15 +1,16 @@
-from django.conf.urls import url
+from django.urls import re_path,path
 from . import views
 
 app_name = "profiles"
 
 urlpatterns = [
-    url(r"^account_status/$", views.index, name = "account_status"),
-    url(r"^money_transfer/", views.money_transfer, name = "money_transfer"),
-    url(r"^loan_app/$", views.loan, name = "loan_app"),
-    url(r"^ewallet/$", views.ewallet, name = "ewallet"),
-    url(r"^online_pay/$", views.online_pay, name = "online_pay"),
-    url(r"settings/$", views.settings, name = "settings"),
-    url(r"edit_details/", views.edit_details, name = "edit_details"),
-    url(r"delete_account/$", views.delete_account, name = "delete_account")
+    re_path(r"^account_status/$", views.index, name = "account_status"),
+    re_path(r"^money_transfer/", views.money_transfer, name = "money_transfer"),
+    re_path(r"^loan_app/$", views.loan, name = "loan_app"),
+    re_path(r"^ewallet/$", views.ewallet, name = "ewallet"),
+    re_path(r"^online_pay/$", views.online_pay, name = "online_pay"),
+    re_path(r"settings/$", views.settings, name = "settings"),
+    re_path(r"edit_details/", views.edit_details, name = "edit_details"),
+    re_path(r"delete_account/$", views.delete_account, name = "delete_account"),
+    path('authorize_payment/<int:request_id>/', views.authorize_payment, name="authorize_payment")
 ]

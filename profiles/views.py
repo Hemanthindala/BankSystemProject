@@ -1,10 +1,10 @@
+from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from . import forms
 from . import models
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
-from profiles.models import Status 
 import random
 
 def randomGen():
@@ -13,10 +13,10 @@ def randomGen():
 
 def index(request):
     try:
-        curr_user = Status.objects.get(user_name=request.user) # getting details of current user
+        curr_user = models.Status.objects.get(user_name=request.user) # getting details of current user
     except:
         # if no details exist (new user), create new details
-        curr_user = Status()
+        curr_user = models.Status()
         curr_user.account_number = randomGen() # random account number for every new user
         curr_user.balance = 0
         curr_user.user_name = request.user
@@ -28,30 +28,128 @@ def money_transfer(request):
         form = forms.MoneyTransferForm(request.POST)
         if form.is_valid():
             form.save()
-        
-            curr_user = models.MoneyTransfer.objects.get(enter_your_user_name=request.user)
-            dest_user_acc_num = curr_user.enter_the_destination_account_number
+            existing_user = models.Status.objects.get(user_name=request.user)
+            curr_user = models.MoneyTransfer.objects.filter(enter_your_user_name=request.user).first()
+            if curr_user:
+                enter_the_destination_account_number = request.POST.get('enter_the_destination_account_number')
+                enter_the_amount_to_be_transferred_in_INR = request.POST.get('enter_the_amount_to_be_transferred_in_INR')
+                dest_user_acc_num = enter_the_destination_account_number
+                destination_user = models.Status.objects.get(account_number=enter_the_destination_account_number)
 
-            temp = curr_user # NOTE: Delete this instance once money transfer is done
-            
-            dest_user = models.Status.objects.get(account_number=dest_user_acc_num) # FIELD 1
-            transfer_amount = curr_user.enter_the_amount_to_be_transferred_in_INR # FIELD 2
-            curr_user = models.Status.objects.get(user_name=request.user) # FIELD 3
+                from_account_number = existing_user.account_number
 
-            # Now transfer the money!
-            curr_user.balance = curr_user.balance - transfer_amount
-            dest_user.balance = dest_user.balance + transfer_amount
+                temp = curr_user  # NOTE: Delete this instance once money transfer is done
+                transfer_amount = int(enter_the_amount_to_be_transferred_in_INR)  # FIELD 2
+                print("transfer amount", transfer_amount)
+                curr_user = models.Status.objects.get(user_name=request.user)  # FIELD 3
 
-            # Save the changes before redirecting
-            curr_user.save()
-            dest_user.save()
-
-            temp.delete() # NOTE: Now deleting the instance for future money transactions
+                print(curr_user.user_name)
+                print("hello")
+                transaction = models.Transaction(
+                    from_account_number=from_account_number,
+                    to_account_number=dest_user_acc_num,
+                    amount_transferred=transfer_amount,
+                )
+                transaction.save()
+                print("transaction done")
+                if transfer_amount > 50000:
+                    new_request = models.Request(from_account_number=from_account_number,
+                                                 to_account_number=dest_user_acc_num,
+                                                 amount_transferred=transfer_amount)
+                    new_request.save()
+                    print(new_request.id)
+                    #
+                    # Call the authorize_payment function
+                        # Perform any additional actions if authorized
+                    #     print("Transaction authorized!")
+                    #     curr_user.balance = curr_user.balance - transfer_amount
+                    #     print("curr_user_balance", curr_user.balance)
+                    #     destination_user.balance = destination_user.balance + transfer_amount
+                    #     curr_user.save()
+                    #     destination_user.save()
+                    # else:
+                    #     # Handle unauthorized transaction
+                    #     print("Transaction unauthorized!")
+                else:
+                    curr_user.balance = curr_user.balance - transfer_amount
+                    print("curr_user_balance", curr_user.balance)
+                    destination_user.balance = destination_user.balance + transfer_amount
+                    curr_user.save()
+                    destination_user.save()
+                temp.delete()  # NOTE: Now deleting the instance for future money transactions
 
         return redirect("profiles/profile.html")
     else:
         form = forms.MoneyTransferForm()
     return render(request, "profiles/money_transfer.html", {"form": form})
+
+
+def authorize_payment(request_id, from_account_number, to_account_number, amount_transferred):
+    # Retrieve the request instance using the provided request_id
+    payment_request = models.Request.objects.get(id=request_id, from_account_number=from_account_number,
+                                          to_account_number=to_account_number, amount_transferred=amount_transferred)
+
+    # Update the request_resolved field to True
+    payment_request.request_resolved = True
+
+    # Save the changes to the database
+    payment_request.save()
+
+    return True
+
+def authorize_payment(request, request_id):
+    if request.method == 'GET':
+        # Retrieve the Request object
+        payment_request = models.Request.objects.get(id=request_id)
+
+        # Update the request_resolved field to True
+        payment_request.request_resolved = True
+        payment_request.save()
+
+
+        from_user_status = models.Status.objects.get(account_number = payment_request.from_account_number)
+        from_user_status.balance = from_user_status.balance - payment_request.amount_transferred
+        print("curr_user_balance", from_user_status.balance)
+        destination_user = models.Status.objects.get(account_number=payment_request.to_account_number)
+        destination_user.balance = destination_user.balance + payment_request.amount_transferred
+        from_user_status.save()
+        destination_user.save()
+
+        return JsonResponse({'status': 'success', 'message': 'Payment request authorized successfully and completed'})
+    else:
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    # Indicate that the payment authorization was successful
+
+
+def fetch_all_requests(request):
+    if request.method == 'GET':
+        # Retrieve all requests from the database
+        all_requests = models.Request.objects.all()
+
+        # Create a list to store request details
+        requests_list = []
+
+        # Iterate through each request and extract relevant information
+        for payment_request in all_requests:
+            request_details = {
+                'id': payment_request.id,
+                'from_account_number': payment_request.from_account_number,
+                'to_account_number': payment_request.to_account_number,
+                'amount_transferred': str(payment_request.amount_transferred),
+                'request_resolved': payment_request.request_resolved,
+                'date_and_time': payment_request.date_and_time.strftime('%Y-%m-%d %H:%M:%S'),
+            }
+            requests_list.append(request_details)
+
+        # Create a dictionary containing the list of requests
+        response_data = {'requests': requests_list}
+
+        # Return the data in JSON format
+        return JsonResponse(response_data)
+
+    # Handle other HTTP methods (optional)
+    return JsonResponse({'error': 'Invalid HTTP method'}, status=400)
+
 
 def loan(request):
     return render(request, "profiles/loans.html")

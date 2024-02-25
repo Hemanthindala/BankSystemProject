@@ -21,3 +21,8 @@ class MoneyTransferForm (forms.ModelForm):
             "enter_the_destination_account_number", 
             "enter_the_amount_to_be_transferred_in_INR"
         ]
+
+class TransactionForm(forms.ModelForm):
+    class Meta:
+        model = models.Transaction
+        fields = ['from_account_number', 'to_account_number', 'amount_transferred']
