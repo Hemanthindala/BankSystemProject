@@ -44,7 +44,6 @@ def money_transfer(request):
                 curr_user = models.Status.objects.get(user_name=request.user)  # FIELD 3
 
                 print(curr_user.user_name)
-                print("hello")
                 transaction = models.Transaction(
                     from_account_number=from_account_number,
                     to_account_number=dest_user_acc_num,
