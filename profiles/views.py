@@ -9,7 +9,7 @@ import random
 
 def randomGen():
     # return a 6 digit random number
-    return int(random.uniform(100000, 999999))
+    return int(random.uniform(100000000, 999999999))
 
 def index(request):
     try:
@@ -50,7 +50,7 @@ def money_transfer(request):
                     amount_transferred=transfer_amount,
                 )
                 transaction.save()
-                print("transaction done")
+
                 if transfer_amount > 50000:
                     new_request = models.Request(from_account_number=from_account_number,
                                                  to_account_number=dest_user_acc_num,
@@ -70,9 +70,12 @@ def money_transfer(request):
                     #     # Handle unauthorized transaction
                     #     print("Transaction unauthorized!")
                 else:
-                    curr_user.balance = curr_user.balance - transfer_amount
-                    print("curr_user_balance", curr_user.balance)
-                    destination_user.balance = destination_user.balance + transfer_amount
+                    if curr_user.balance > transfer_amount:
+                        curr_user.balance = curr_user.balance - transfer_amount
+                        print("curr_user_balance", curr_user.balance)
+                        destination_user.balance = destination_user.balance + transfer_amount
+                    else:
+                        return JsonResponse({'status': 'error', 'message': 'Insufficient Balance to make the transaction'})
                     curr_user.save()
                     destination_user.save()
                 temp.delete()  # NOTE: Now deleting the instance for future money transactions
@@ -82,19 +85,6 @@ def money_transfer(request):
         form = forms.MoneyTransferForm()
     return render(request, "profiles/money_transfer.html", {"form": form})
 
-
-def authorize_payment(request_id, from_account_number, to_account_number, amount_transferred):
-    # Retrieve the request instance using the provided request_id
-    payment_request = models.Request.objects.get(id=request_id, from_account_number=from_account_number,
-                                          to_account_number=to_account_number, amount_transferred=amount_transferred)
-
-    # Update the request_resolved field to True
-    payment_request.request_resolved = True
-
-    # Save the changes to the database
-    payment_request.save()
-
-    return True
 
 def authorize_payment(request, request_id):
     if request.method == 'GET':
