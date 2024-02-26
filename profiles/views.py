@@ -107,10 +107,13 @@ def authorize_payment(request, request_id):
 
 
         from_user_status = models.Status.objects.get(account_number = payment_request.from_account_number)
-        from_user_status.balance = from_user_status.balance - payment_request.amount_transferred
-        print("curr_user_balance", from_user_status.balance)
-        destination_user = models.Status.objects.get(account_number=payment_request.to_account_number)
-        destination_user.balance = destination_user.balance + payment_request.amount_transferred
+        if from_user_status.balance > payment_request.amount_transferred:
+            from_user_status.balance = from_user_status.balance - payment_request.amount_transferred
+            print("curr_user_balance", from_user_status.balance)
+            destination_user = models.Status.objects.get(account_number=payment_request.to_account_number)
+            destination_user.balance = destination_user.balance + payment_request.amount_transferred
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Insufficient Balance to make the transaction'})
         from_user_status.save()
         destination_user.save()
 
@@ -120,10 +123,10 @@ def authorize_payment(request, request_id):
     # Indicate that the payment authorization was successful
 
 
-def fetch_all_requests(request):
+def fetch_all_requests_not_resolved(request):
     if request.method == 'GET':
         # Retrieve all requests from the database
-        all_requests = models.Request.objects.all()
+        all_requests = models.Request.objects.get(request_resolved=False)
 
         # Create a list to store request details
         requests_list = []
@@ -142,6 +145,60 @@ def fetch_all_requests(request):
 
         # Create a dictionary containing the list of requests
         response_data = {'requests': requests_list}
+
+        # Return the data in JSON format
+        return JsonResponse(response_data)
+
+    # Handle other HTTP methods (optional)
+    return JsonResponse({'error': 'Invalid HTTP method'}, status=400)
+
+def fetch_all_transactions_of_user(request,account_number):
+    if request.method == 'GET':
+        all_transactions = models.Transaction.objects.get(from_account_number=account_number)
+        transactions_list = []
+
+        # Iterate through each request and extract relevant information
+        for transaction_request in all_transactions:
+            transaction_details = {
+                'id': transaction_request.id,
+                'from_account_number': transaction_request.from_account_number,
+                'to_account_number': transaction_request.to_account_number,
+                'amount_transferred': str(transaction_request.amount_transferred),
+                'date_and_time': transaction_request.date_and_time.strftime('%Y-%m-%d %H:%M:%S'),
+            }
+            transactions_list.append(transaction_details)
+
+        # Create a dictionary containing the list of requests
+        response_data = {'requests': transactions_list}
+
+        # Return the data in JSON format
+        return JsonResponse(response_data)
+
+        # Handle other HTTP methods (optional)
+    return JsonResponse({'error': 'Invalid HTTP method'}, status=400)
+
+
+def fetch_all_transactions(request):
+    if request.method == 'GET':
+        # Retrieve all requests from the database
+        all_transactions = models.Transaction.objects.all()
+
+        # Create a list to store request details
+        transactions_list = []
+
+        # Iterate through each request and extract relevant information
+        for transaction_request in all_transactions:
+            transaction_details = {
+                'id': transaction_request.id,
+                'from_account_number': transaction_request.from_account_number,
+                'to_account_number': transaction_request.to_account_number,
+                'amount_transferred': str(transaction_request.amount_transferred),
+                'date_and_time': transaction_request.date_and_time.strftime('%Y-%m-%d %H:%M:%S'),
+            }
+            transactions_list.append(transaction_details)
+
+        # Create a dictionary containing the list of requests
+        response_data = {'requests': transactions_list}
 
         # Return the data in JSON format
         return JsonResponse(response_data)

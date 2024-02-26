@@ -13,5 +13,7 @@ urlpatterns = [
     re_path(r"edit_details/", views.edit_details, name = "edit_details"),
     re_path(r"delete_account/$", views.delete_account, name = "delete_account"),
     path('authorize_payment/<int:request_id>/', views.authorize_payment, name="authorize_payment"),
-    path('fetchall_requests/', views.fetch_all_requests,name="fetchallrequests")
+    path('fetch_all_transactions_of_user/<int:account_number>/', views.fetch_all_transactions_of_user, name="fetch_all_transactions_of_user"),
+    path('fetch_all_requests_not_resolved/', views.fetch_all_requests_not_resolved,name="fetch_all_requests_not_resolved"),
+    path('fetch_all_transactions/', views.fetch_all_transactions,name="fetch_all_transactions")
 ]

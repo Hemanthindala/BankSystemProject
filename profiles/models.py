@@ -1,4 +1,6 @@
 from django.db import models
+import datetime
+
 
 from django.contrib.auth.models import User
 
@@ -33,20 +35,15 @@ class Transaction(models.Model):
     from_account_number = models.IntegerField()
     to_account_number = models.IntegerField()
     amount_transferred = models.DecimalField(max_digits=10, decimal_places=2)
-    # date_and_time = models.DateTimeField(auto_now_add=True)
+    date_and_time = models.DateTimeField(default=datetime.datetime.now)
     def save(self, *args, **kwargs):
         # Override the save method to generate an ID before saving
         if not self.id:
             # If ID is not set, generate a new one
-            last_request = Request.objects.order_by('-id').first()
-            new_id = 1 if not last_request else last_request.id + 1
+            last_trans = Transaction.objects.order_by('-id').first()
+            new_id = 1 if not last_trans else last_trans.id + 1
             self.id = new_id
         super().save(*args, **kwargs)
-
-
-
-
-
 
 
 class Request(models.Model):
@@ -55,7 +52,7 @@ class Request(models.Model):
     to_account_number = models.IntegerField()
     amount_transferred = models.DecimalField(max_digits=10, decimal_places=2)
     request_resolved = models.BooleanField(default=False)  # Added a BooleanField for request resolution
-    date_and_time = models.DateTimeField(auto_now_add=True)
+    date_and_time = models.DateTimeField(default=datetime.datetime.now)
 
     def save(self, *args, **kwargs):
         # Override the save method to generate an ID before saving
@@ -65,6 +62,7 @@ class Request(models.Model):
             new_id = 1 if not last_request else last_request.id + 1
             self.id = new_id
         super().save(*args, **kwargs)
+
 
 class MoneyTransfer(models.Model):
     enter_your_user_name = models.CharField(max_length=150, default=None)
