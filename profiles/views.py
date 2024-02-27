@@ -17,11 +17,14 @@ def index(request):
     except:
         # if no details exist (new user), create new details
         curr_user = models.Status()
-        curr_user.account_number = randomGen() # random account number for every new user
+        curr_user.account_number = randomGen()# random account number for every new user
         curr_user.balance = 0
         curr_user.user_name = request.user
         curr_user.save()
-    return render(request, "profiles/profile.html", {"curr_user": curr_user})
+    if request.user.groups.filter(name='Employee').exists():
+        return render(request, "profiles/profile_employee.html", {"curr_user": curr_user})
+    elif request.user.groups.filter(name='Customer').exists():
+        return render(request, "profiles/profile_customer.html", {"curr_user": curr_user})
 
 def money_transfer(request):
     if request.method == "POST":
@@ -50,7 +53,6 @@ def money_transfer(request):
                     amount_transferred=transfer_amount,
                 )
                 transaction.save()
-
                 if transfer_amount > 50000:
                     new_request = models.Request(from_account_number=from_account_number,
                                                  to_account_number=dest_user_acc_num,
@@ -80,7 +82,7 @@ def money_transfer(request):
                     destination_user.save()
                 temp.delete()  # NOTE: Now deleting the instance for future money transactions
 
-        return redirect("profiles/profile.html")
+        return redirect("profiles/profile_customer.html")
     else:
         form = forms.MoneyTransferForm()
     return render(request, "profiles/money_transfer.html", {"form": form})
